@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>WA Bulk Sender</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="logo">💬 WA Bulk Sender</div>
+      <div class="warning">⚠️ Envoyez uniquement à des contacts qui ont donné leur accord</div>
+    </header>
+
+    <div class="form-group">
+      <label for="phones">
+        Numéros de téléphone
+        <span class="hint">Un par ligne — Format: <code>213600123456</code> ou <code>213600123456,Prénom</code></span>
+      </label>
+      <textarea id="phones" rows="6"
+        placeholder="213600123456&#10;33612345678,Ahmed&#10;212661234567,Sara"></textarea>
+      <div class="counter" id="phoneCount">0 numéro</div>
+    </div>
+
+    <div class="form-group">
+      <label for="message">
+        Message
+        <span class="hint">Utilisez <code>{name}</code> pour personnaliser avec le prénom</span>
+      </label>
+      <textarea id="message" rows="4"
+        placeholder="Bonjour {name} ! 🎉&#10;Découvrez notre nouveau produit..."></textarea>
+    </div>
+
+    <div class="form-group inline">
+      <label for="delay">Délai minimum entre envois (secondes)</label>
+      <input type="number" id="delay" value="8" min="5" max="120">
+    </div>
+
+    <div id="status" class="status">Prêt à envoyer</div>
+
+    <div class="progress-wrap">
+      <div class="progress-bg">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+      <span class="progress-text" id="progressText">0 / 0</span>
+    </div>
+
+    <div class="buttons">
+      <button id="startBtn" class="btn btn-start">▶ Démarrer</button>
+      <button id="stopBtn" class="btn btn-stop" disabled>⏹ Arrêter</button>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div class="footer">Ne fermez pas ce panneau pendant l'envoi</div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

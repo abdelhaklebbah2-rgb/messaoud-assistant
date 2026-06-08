@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "WA Bulk Sender",
+  "version": "1.0.0",
+  "description": "Envoyez des messages WhatsApp à votre liste de clients depuis WhatsApp Web",
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "WA Bulk Sender"
+  }
+}
