@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#00a884">
+  <title>WA Sender — Android</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:   #00a884;
+      --green2:  #00c49a;
+      --dark:    #111b21;
+      --panel:   #1a252d;
+      --panel2:  #2a3942;
+      --border:  #2a3942;
+      --text:    #e9edef;
+      --muted:   #8696a0;
+      --dim:     #667781;
+      --red:     #ff6b6b;
+      --yellow:  #f0b429;
+      --r:       12px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--dark);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ─── Screens ─── */
+    .screen { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    /* ─── Header ─── */
+    .topbar {
+      background: var(--panel);
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .topbar-row { display: flex; align-items: center; justify-content: space-between; }
+    .topbar h1 { font-size: 17px; color: var(--green); font-weight: 700; }
+    .clock { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .time-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; margin-top: 8px;
+      padding: 5px 10px; border-radius: 20px;
+      background: var(--panel2); color: var(--muted);
+    }
+    .time-pill.ok     { background: #0d2e1e; color: var(--green); }
+    .time-pill.off    { background: #2e1a0d; color: var(--yellow); }
+
+    /* ─── Scrollable body ─── */
+    .scroll-area {
+      flex: 1; overflow-y: auto;
+      padding: 14px 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ─── Cards / sections ─── */
+    .card {
+      background: var(--panel);
+      border-radius: var(--r);
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 10px;
+    }
+
+    /* ─── Inputs ─── */
+    textarea, input[type=text], input[type=url], input[type=number] {
+      width: 100%;
+      background: var(--dark);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+    }
+    textarea { resize: none; }
+    textarea:focus, input:focus { border-color: var(--green); }
+    input[type=number] { width: 70px; text-align: center; }
+
+    .field-label {
+      font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block;
+    }
+    .field-hint {
+      font-size: 11px; color: var(--dim); margin-top: 5px; line-height: 1.5;
+    }
+    code {
+      background: var(--panel2); padding: 1px 5px;
+      border-radius: 4px; color: var(--green); font-size: 11px;
+    }
+    .counter { font-size: 11px; color: var(--dim); text-align: right; margin-top: 4px; }
+
+    /* ─── File import ─── */
+    .import-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--panel2); border: none; border-radius: 8px;
+      color: var(--text); font-size: 13px; padding: 8px 14px;
+      cursor: pointer; font-family: inherit; margin-bottom: 10px;
+    }
+    .import-btn:active { opacity: .7; }
+    .import-info {
+      background: #0d2e1e; border-radius: 8px;
+      padding: 7px 10px; font-size: 12px; color: var(--green);
+      margin-bottom: 10px; display: none;
+    }
+
+    /* ─── Inline row ─── */
+    .row { display: flex; align-items: center; gap: 10px; }
+    .row label { font-size: 13px; color: var(--muted); flex: 1; }
+
+    /* ─── Buttons ─── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px;
+      border: none; border-radius: var(--r);
+      font-size: 16px; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-green  { background: var(--green); color: #fff; }
+    .btn-green:hover { background: var(--green2); }
+    .btn-red    { background: #c0392b; color: #fff; }
+    .btn-ghost  { background: var(--panel2); color: var(--text); }
+    .btn-yellow { background: #d4a017; color: #111; }
+    .btn:disabled { opacity: .35; pointer-events: none; }
+    .btn-sm {
+      padding: 9px 16px; font-size: 14px;
+      border-radius: 8px; width: auto;
+    }
+
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+
+    /* ─── Send screen specifics ─── */
+    .progress-bar-wrap {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+    }
+    .progress-track {
+      flex: 1; height: 6px; background: var(--panel2);
+      border-radius: 3px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: var(--green);
+      border-radius: 3px; transition: width .4s;
+    }
+    .progress-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+    .contact-card {
+      background: var(--panel2); border-radius: var(--r);
+      padding: 16px; margin-bottom: 14px;
+    }
+    .contact-phone { font-size: 22px; font-weight: 700; color: var(--text); }
+    .contact-name  { font-size: 14px; color: var(--muted); margin-top: 2px; }
+    .msg-preview {
+      margin-top: 12px; background: var(--dark);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; color: var(--text); line-height: 1.5;
+      max-height: 80px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    .status-box {
+      text-align: center; padding: 10px;
+      font-size: 14px; color: var(--muted);
+      margin-bottom: 12px; min-height: 44px;
+    }
+    .status-box.waiting  { color: var(--yellow); }
+    .status-box.counting { color: var(--green); }
+    .status-box.ready    { color: var(--muted); }
+
+    /* Countdown ring */
+    .ring-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 14px; padding: 10px 0 16px;
+    }
+    svg.ring circle { fill: none; stroke-linecap: round; transition: stroke-dashoffset .9s linear; }
+    .ring-num { font-size: 28px; font-weight: 700; color: var(--green); }
+
+    /* ─── Log ─── */
+    .log-box {
+      background: #0b1418; border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 10px;
+      max-height: 120px; overflow-y: auto;
+      font-size: 11px; font-family: 'Courier New', monospace;
+    }
+    .log-line { padding: 2px 0; border-bottom: 1px solid #111b21; color: var(--dim); }
+    .log-line:last-child { border-bottom: none; }
+    .log-line.ok   { color: var(--green); }
+    .log-line.fail { color: var(--red); }
+    .log-line.info { color: var(--yellow); }
+
+    /* ─── Done screen ─── */
+    .done-icon { font-size: 64px; text-align: center; margin: 24px 0 8px; }
+    .done-title { font-size: 24px; font-weight: 700; text-align: center; color: var(--green); }
+    .done-sub   { font-size: 14px; color: var(--muted); text-align: center; margin: 6px 0 28px; }
+    .stat-row   { display: flex; justify-content: center; gap: 24px; margin-bottom: 28px; }
+    .stat { text-align: center; }
+    .stat-n { font-size: 32px; font-weight: 700; color: var(--text); }
+    .stat-l { font-size: 12px; color: var(--muted); }
+
+    /* ─── MacroDroid banner ─── */
+    .mdroid-banner {
+      background: #1a2030; border: 1px solid #2a3560;
+      border-radius: var(--r); padding: 12px 14px; margin-bottom: 12px;
+    }
+    .mdroid-banner strong { color: #7c9dea; display: block; margin-bottom: 4px; font-size: 13px; }
+    .mdroid-banner p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--panel2); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ SCREEN 1: SETUP ══════════════ -->
+<div id="setupScreen" class="screen active">
+  <div class="topbar">
+    <div class="topbar-row">
+      <h1>💬 WA Sender Android</h1>
+      <span id="s-clock" class="clock">--:--</span>
+    </div>
+    <div id="s-timePill" class="time-pill">⏳ Vérification…</div>
+  </div>
+
+  <div class="scroll-area">
+
+    <!-- MacroDroid tip -->
+    <div class="mdroid-banner">
+      <strong>🤖 Intégration MacroDroid</strong>
+      <p>Dans MacroDroid, créez un déclencheur planifié (ex. 9h00) avec l'action <em>Ouvrir URL</em> → <code style="color:#7c9dea">messaoud.netlify.app/wa-android.html</code></p>
+    </div>
+
+    <!-- Contacts -->
+    <div class="card">
+      <div class="card-title">📋 Contacts</div>
+      <label for="csvFile" class="import-btn">📂 Importer CSV / Excel (CSV)</label>
+      <input type="file" id="csvFile" accept=".csv,.txt" hidden>
+      <div id="importInfo" class="import-info"></div>
+      <textarea id="phones" rows="5"
+        placeholder="213600123456&#10;33612345678,Ahmed&#10;212661234567,Sara&#10;&#10;Format : numéro  ou  numéro,Prénom"></textarea>
+      <div class="counter" id="phoneCount">0 numéro</div>
+      <div class="field-hint">Indicatif pays obligatoire · Colonne A = numéro, B = prénom</div>
+    </div>
+
+    <!-- Message -->
+    <div class="card">
+      <div class="card-title">✏️ Message</div>
+      <textarea id="message" rows="4"
+        placeholder="Bonjour {name} ! 🎉&#10;Découvrez notre nouveau produit…"></textarea>
+      <div class="field-hint"><code>{name}</code> est remplacé par le prénom du contact</div>
+    </div>
+
+    <!-- Délai -->
+    <div class="card">
+      <div class="row">
+        <label>⏱ Délai entre envois (secondes)</label>
+        <input type="number" id="delay" value="10" min="5" max="120">
+      </div>
+      <div class="field-hint" style="margin-top:8px">
+        Un délai aléatoire de 0–5s supplémentaires est ajouté automatiquement
+      </div>
+    </div>
+
+    <button id="startBtn" class="btn btn-green" style="margin-bottom:20px">
+      ▶ Démarrer la campagne
+    </button>
+
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN 2: SENDING ══════════════ -->
+<div id="sendScreen" class="screen">
+  <div class="topbar">
+    <div class="topbar-row">
+      <h1>📤 Envoi en cours</h1>
+      <span id="send-clock" class="clock">--:--</span>
+    </div>
+    <div id="send-timePill" class="time-pill">—</div>
+  </div>
+
+  <div class="scroll-area">
+
+    <!-- Progress -->
+    <div class="progress-bar-wrap">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <span class="progress-label" id="progressLabel">0 / 0</span>
+    </div>
+
+    <!-- Contact card -->
+    <div class="contact-card" id="contactCard">
+      <div class="contact-phone" id="contactPhone">—</div>
+      <div class="contact-name"  id="contactName">—</div>
+      <div class="msg-preview"   id="msgPreview">—</div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-box ready" id="statusBox">Appuyez sur le bouton pour ouvrir WhatsApp</div>
+
+    <!-- Countdown ring (shown during auto-wait) -->
+    <div class="ring-wrap" id="ringWrap" style="display:none">
+      <svg width="80" height="80" viewBox="0 0 80 80" class="ring">
+        <circle cx="40" cy="40" r="34" stroke="#2a3942" stroke-width="6"/>
+        <circle id="ringArc" cx="40" cy="40" r="34" stroke="#00a884" stroke-width="6"
+          stroke-dasharray="213.6" stroke-dashoffset="213.6"
+          transform="rotate(-90 40 40)"/>
+      </svg>
+      <span class="ring-num" id="ringNum">—</span>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="btn-grid">
+      <button id="openWaBtn" class="btn btn-green">📲 Ouvrir WhatsApp</button>
+      <button id="nextBtn"   class="btn btn-yellow" disabled>⏭ Suivant</button>
+    </div>
+    <button id="stopBtn" class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:14px">
+      ⏹ Arrêter la campagne
+    </button>
+
+    <!-- Log -->
+    <div class="card">
+      <div class="card-title">Journal</div>
+      <div class="log-box" id="log"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ SCREEN 3: DONE ══════════════ -->
+<div id="doneScreen" class="screen">
+  <div class="scroll-area" style="justify-content:center;display:flex;flex-direction:column;padding-top:40px">
+    <div class="done-icon">🏁</div>
+    <div class="done-title">Campagne terminée</div>
+    <div class="done-sub" id="doneSub">—</div>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-n" id="statOk" style="color:#00a884">0</div>
+        <div class="stat-l">Envoyés</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="statFail" style="color:#ff6b6b">0</div>
+        <div class="stat-l">Échecs</div>
+      </div>
+    </div>
+    <div style="padding:0 16px">
+      <button class="btn btn-green" id="restartBtn">↩ Recommencer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ── State ─────────────────────────────────── */
+const S = {
+  contacts:   [],
+  message:    '',
+  delay:      10,
+  index:      0,
+  results:    [],
+  running:    false,
+  waOpened:   false,
+  countdown:  null,
+};
+
+/* ── Helpers ────────────────────────────────── */
+const $  = id  => document.getElementById(id);
+const sl = ms  => new Promise(r => setTimeout(r, ms));
+const fmt = () => {
+  const n = new Date();
+  return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+};
+
+function isWorkingHours() {
+  const h = new Date().getHours();
+  return h >= 9 && h < 17;
+}
+
+function updateTimePills() {
+  const ok  = isWorkingHours();
+  const txt = ok
+    ? '✅ Plage active (9h – 17h)'
+    : '🚫 Hors horaires — envoi suspendu (9h-17h)';
+  const cls = ok ? 'time-pill ok' : 'time-pill off';
+  ['s-timePill','send-timePill'].forEach(id => {
+    const el = $(id);
+    if (el) { el.textContent = txt; el.className = cls; }
+  });
+}
+
+function parseTxt(raw) {
+  return raw.split('\n')
+    .map(l => l.trim()).filter(Boolean)
+    .map(l => {
+      const [rp, ...rest] = l.split(',');
+      const phone = rp.trim().replace(/[\s\-\+\(\)\.]/g, '');
+      return { phone, name: rest.join(',').trim() };
+    })
+    .filter(c => /^\d{8,15}$/.test(c.phone));
+}
+
+function parseCSV(text) {
+  return text.split(/\r?\n/).map(line => {
+    const cols = []; let f = '', q = false;
+    for (const ch of line) {
+      if (ch === '"') { q = !q; continue; }
+      if (ch === ',' && !q) { cols.push(f.trim()); f = ''; continue; }
+      f += ch;
+    }
+    cols.push(f.trim());
+    return { A: cols[0] || '', B: cols[1] || '' };
+  })
+  .filter(r => r.A)
+  .map(r => ({
+    phone: r.A.replace(/[\s\-\+\(\)\.]/g, ''),
+    name:  r.B
+  }))
+  .filter(c => /^\d{8,15}$/.test(c.phone));
+}
+
+/* ── Clock ──────────────────────────────────── */
+function startClock() {
+  const tick = () => {
+    const t = fmt();
+    ['s-clock','send-clock'].forEach(id => { const e=$(id); if(e) e.textContent=t; });
+    updateTimePills();
+  };
+  tick(); setInterval(tick, 15_000);
+}
+
+/* ── Contacts counter ───────────────────────── */
+function updateCounter() {
+  const n = parseTxt($('phones').value).length;
+  $('phoneCount').textContent = `${n} numéro${n!==1?'s':''}`;
+}
+
+/* ── CSV import ─────────────────────────────── */
+$('csvFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; if (!file) return;
+  const text = await file.text();
+  let contacts;
+  // Detect header row
+  const first = text.split(/\r?\n/)[0].toLowerCase();
+  const hasHeader = ['phone','numéro','numero','tel','mobile'].some(k => first.includes(k));
+  contacts = parseCSV(hasHeader
+    ? text.split(/\r?\n/).slice(1).join('\n')
+    : text);
+
+  if (!contacts.length) { alert('Aucun numéro valide trouvé dans ce fichier'); return; }
+
+  $('phones').value = contacts.map(c => c.name ? `${c.phone},${c.name}` : c.phone).join('\n');
+  updateCounter(); persist();
+  $('importInfo').style.display = 'block';
+  $('importInfo').textContent = `✅ ${contacts.length} contacts importés depuis "${file.name}"`;
+  e.target.value = '';
+});
+
+/* ── Persistence ────────────────────────────── */
+function persist() {
+  try {
+    localStorage.setItem('wa_phones',  $('phones').value);
+    localStorage.setItem('wa_message', $('message').value);
+    localStorage.setItem('wa_delay',   $('delay').value);
+  } catch {}
+}
+function restore() {
+  try {
+    const ph = localStorage.getItem('wa_phones');
+    const ms = localStorage.getItem('wa_message');
+    const dl = localStorage.getItem('wa_delay');
+    if (ph) $('phones').value  = ph;
+    if (ms) $('message').value = ms;
+    if (dl) $('delay').value   = dl;
+  } catch {}
+  updateCounter();
+}
+
+$('phones').addEventListener('input',  () => { updateCounter(); persist(); });
+$('message').addEventListener('input', () => persist());
+$('delay').addEventListener('change',  () => persist());
+
+/* ── Screen switch ───────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* ── Log ────────────────────────────────────── */
+function log(text, cls='') {
+  const d = document.createElement('div');
+  d.className = `log-line ${cls}`;
+  d.textContent = `[${fmt()}] ${text}`;
+  const lb = $('log');
+  lb.appendChild(d);
+  lb.scrollTop = lb.scrollHeight;
+}
+
+/* ── Progress ────────────────────────────────── */
+function updateProgress() {
+  const pct = S.contacts.length ? (S.index / S.contacts.length) * 100 : 0;
+  $('progressFill').style.width  = `${pct}%`;
+  $('progressLabel').textContent = `${S.index} / ${S.contacts.length}`;
+}
+
+/* ── Render current contact ──────────────────── */
+function renderContact() {
+  const c   = S.contacts[S.index];
+  const msg = S.message.replace(/\{name\}/g, c.name || '');
+  $('contactPhone').textContent = `+${c.phone}`;
+  $('contactName').textContent  = c.name || '';
+  $('msgPreview').textContent   = msg;
+  $('openWaBtn').disabled       = false;
+  $('nextBtn').disabled         = true;
+  setStatus('ready', `Contact ${S.index + 1} / ${S.contacts.length} — appuyez pour ouvrir WhatsApp`);
+  hideRing();
+}
+
+function setStatus(cls, text) {
+  $('statusBox').className = `status-box ${cls}`;
+  $('statusBox').textContent = text;
+}
+
+/* ── Countdown ring ──────────────────────────── */
+function showRing(seconds, onDone) {
+  $('ringWrap').style.display = 'flex';
+  const arc = $('ringArc');
+  const num = $('ringNum');
+  const C   = 213.6; // 2π × 34
+  let left  = seconds;
+  arc.style.strokeDashoffset = '0';
+  num.textContent = left;
+
+  clearInterval(S.countdown);
+  S.countdown = setInterval(() => {
+    left--;
+    num.textContent = left;
+    arc.style.strokeDashoffset = `${C * (1 - left / seconds)}`;
+    if (left <= 0) {
+      clearInterval(S.countdown);
+      hideRing();
+      onDone();
+    }
+  }, 1000);
+}
+
+function hideRing() {
+  $('ringWrap').style.display = 'none';
+  clearInterval(S.countdown);
+}
+
+/* ── Open WhatsApp ───────────────────────────── */
+$('openWaBtn').addEventListener('click', () => {
+  if (!S.running) return;
+
+  if (!isWorkingHours()) {
+    setStatus('waiting', '🚫 Hors des heures autorisées (9h – 17h)');
+    log('🚫 Hors plage horaire — campagne suspendue', 'fail');
+    S.running = false;
+    $('openWaBtn').disabled = true;
+    return;
+  }
+
+  const c   = S.contacts[S.index];
+  const msg = S.message.replace(/\{name\}/g, c.name || '');
+  const url = `https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`;
+
+  log(`📤 Ouverture WhatsApp → +${c.phone}`, 'info');
+  $('openWaBtn').disabled = true;
+  S.waOpened = true;
+
+  setStatus('waiting', '⏳ WhatsApp ouvert — envoyez le message puis revenez ici');
+
+  // Open WhatsApp
+  window.location.href = url;
+});
+
+/* ── Return from WhatsApp (visibility change) ── */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !S.running || !S.waOpened) return;
+  S.waOpened = false;
+  S.results.push({ ok: true });
+  log(`✅ Envoyé à +${S.contacts[S.index].phone}`, 'ok');
+  S.index++;
+  updateProgress();
+
+  if (S.index >= S.contacts.length) { finishCampaign(); return; }
+
+  // Auto-countdown to next contact
+  const delay = S.delay + Math.floor(Math.random() * 5);
+  setStatus('counting', `⏳ Prochain contact dans ${delay}s…`);
+  $('nextBtn').disabled = false;
+
+  showRing(delay, () => {
+    if (!S.running) return;
+    if (!isWorkingHours()) {
+      setStatus('waiting', '🚫 Hors des heures autorisées — reprenez à 9h');
+      S.running = false; return;
+    }
+    renderContact();
+    $('nextBtn').disabled = true;
+  });
+});
+
+/* ── Suivant (manual override) ─────────────────── */
+$('nextBtn').addEventListener('click', () => {
+  hideRing();
+  $('nextBtn').disabled = true;
+  if (!S.running) return;
+  if (S.index >= S.contacts.length) { finishCampaign(); return; }
+  renderContact();
+});
+
+/* ── Stop ────────────────────────────────────── */
+$('stopBtn').addEventListener('click', () => {
+  S.running = false;
+  hideRing();
+  log('⏹ Campagne arrêtée par l\'utilisateur', 'fail');
+
+  const ok = S.results.filter(r => r.ok).length;
+  $('statOk').textContent   = ok;
+  $('statFail').textContent = S.index - ok;
+  $('doneSub').textContent  = `Arrêtée après ${S.index} contacts`;
+  showScreen('doneScreen');
+});
+
+/* ── Start ────────────────────────────────────── */
+$('startBtn').addEventListener('click', () => {
+  const contacts = parseTxt($('phones').value);
+  const message  = $('message').value.trim();
+
+  if (!contacts.length) { alert('⚠️ Aucun numéro valide'); return; }
+  if (!message)         { alert('⚠️ Veuillez saisir un message'); return; }
+  if (!isWorkingHours()) {
+    alert('🚫 Hors des heures autorisées (9h – 17h)\nRevenez dans la plage autorisée.');
+    return;
+  }
+
+  S.contacts = contacts;
+  S.message  = message;
+  S.delay    = parseInt($('delay').value) || 10;
+  S.index    = 0;
+  S.results  = [];
+  S.running  = true;
+  S.waOpened = false;
+
+  $('log').innerHTML = '';
+  log(`🚀 Campagne démarrée — ${contacts.length} contacts`, 'info');
+  updateProgress();
+  renderContact();
+  showScreen('sendScreen');
+});
+
+/* ── Finish ──────────────────────────────────── */
+function finishCampaign() {
+  S.running = false;
+  hideRing();
+  const ok = S.results.filter(r => r.ok).length;
+  log(`🏁 Terminée — ${ok} envoyés`, 'ok');
+  $('statOk').textContent   = ok;
+  $('statFail').textContent = S.contacts.length - ok;
+  $('doneSub').textContent  = `${ok} message${ok>1?'s':''} envoyé${ok>1?'s':''} avec succès`;
+  showScreen('doneScreen');
+}
+
+/* ── Restart ─────────────────────────────────── */
+$('restartBtn').addEventListener('click', () => { showScreen('setupScreen'); });
+
+/* ── Boot ────────────────────────────────────── */
+startClock();
+restore();
+</script>
+</body>
+</html>
