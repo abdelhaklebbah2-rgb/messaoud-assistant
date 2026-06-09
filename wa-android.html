@@ -214,6 +214,21 @@
     .stat-n { font-size: 32px; font-weight: 700; color: var(--text); }
     .stat-l { font-size: 12px; color: var(--muted); }
 
+    /* ─── Account chip ─── */
+    .account-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--panel2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 10px 4px 8px;
+      font-size: 12px; color: var(--muted);
+      cursor: pointer; margin-top: 6px;
+      transition: background .15s;
+    }
+    .account-chip:active { background: #3b4a54; }
+    .account-chip .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green); flex-shrink: 0;
+    }
+
     /* ─── MacroDroid banner ─── */
     .mdroid-banner {
       background: #1a2030; border: 1px solid #2a3560;
@@ -236,7 +251,14 @@
       <h1>💬 WA Sender Android</h1>
       <span id="s-clock" class="clock">--:--</span>
     </div>
-    <div id="s-timePill" class="time-pill">⏳ Vérification…</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0">
+      <div id="s-timePill" class="time-pill">⏳ Vérification…</div>
+      <div id="accountChip" class="account-chip" onclick="editMyNumber()" title="Changer de numéro">
+        <span class="dot"></span>
+        <span id="accountNum">Chargement…</span>
+        ✏️
+      </div>
+    </div>
   </div>
 
   <div class="scroll-area">
@@ -684,9 +706,39 @@ function finishCampaign() {
 /* ── Restart ─────────────────────────────────── */
 $('restartBtn').addEventListener('click', () => { showScreen('setupScreen'); });
 
+/* ── Mon numéro (compte expéditeur) ─────────── */
+const DEFAULT_MY_NUMBER = '213782776089';
+
+function loadMyNumber() {
+  return localStorage.getItem('wa_myphone') || DEFAULT_MY_NUMBER;
+}
+
+function saveMyNumber(num) {
+  localStorage.setItem('wa_myphone', num);
+  renderAccountChip(num);
+}
+
+function renderAccountChip(num) {
+  const formatted = num ? `+${num.replace(/^00/, '')}` : '—';
+  $('accountNum').textContent = formatted;
+}
+
+function editMyNumber() {
+  const current = loadMyNumber();
+  const input = prompt('Votre numéro WhatsApp (avec indicatif, sans +) :', current);
+  if (input === null) return; // annulé
+  const cleaned = input.trim().replace(/[\s\-\+\(\)\.]/g, '');
+  if (!/^\d{8,15}$/.test(cleaned)) {
+    alert('Numéro invalide. Exemple : 213782776089');
+    return;
+  }
+  saveMyNumber(cleaned);
+}
+
 /* ── Boot ────────────────────────────────────── */
 startClock();
 restore();
+renderAccountChip(loadMyNumber());
 </script>
 </body>
 </html>
