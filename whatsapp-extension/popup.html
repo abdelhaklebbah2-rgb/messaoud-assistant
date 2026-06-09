@@ -6,56 +6,98 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
+<div class="container">
 
-    <header>
-      <div class="logo">💬 WA Bulk Sender</div>
-      <div class="warning">⚠️ Envoyez uniquement à des contacts qui ont donné leur accord</div>
-    </header>
-
-    <div class="form-group">
-      <label for="phones">
-        Numéros de téléphone
-        <span class="hint">Un par ligne — Format: <code>213600123456</code> ou <code>213600123456,Prénom</code></span>
-      </label>
-      <textarea id="phones" rows="6"
-        placeholder="213600123456&#10;33612345678,Ahmed&#10;212661234567,Sara"></textarea>
-      <div class="counter" id="phoneCount">0 numéro</div>
+  <!-- Header + horloge -->
+  <header>
+    <div class="header-row">
+      <span class="logo">💬 WA Bulk Sender</span>
+      <span id="clock" class="clock">--:--</span>
     </div>
-
-    <div class="form-group">
-      <label for="message">
-        Message
-        <span class="hint">Utilisez <code>{name}</code> pour personnaliser avec le prénom</span>
-      </label>
-      <textarea id="message" rows="4"
-        placeholder="Bonjour {name} ! 🎉&#10;Découvrez notre nouveau produit..."></textarea>
+    <div id="timeBar" class="time-bar">
+      <span id="timeIcon">⏰</span>
+      <span id="timeText">Vérification des heures…</span>
     </div>
+  </header>
 
-    <div class="form-group inline">
-      <label for="delay">Délai minimum entre envois (secondes)</label>
-      <input type="number" id="delay" value="8" min="5" max="120">
-    </div>
-
-    <div id="status" class="status">Prêt à envoyer</div>
-
-    <div class="progress-wrap">
-      <div class="progress-bg">
-        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+  <!-- Section Contacts -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-title">📋 Contacts</span>
+      <div class="import-row">
+        <label class="btn-small" for="excelFile" title="Importer un fichier Excel (.xlsx) ou CSV">
+          📂 Import Excel / CSV
+        </label>
+        <input type="file" id="excelFile" accept=".xlsx,.csv" hidden>
+        <button id="clearContacts" class="btn-small btn-ghost" title="Effacer la liste">✕</button>
       </div>
-      <span class="progress-text" id="progressText">0 / 0</span>
     </div>
 
-    <div class="buttons">
-      <button id="startBtn" class="btn btn-start">▶ Démarrer</button>
-      <button id="stopBtn" class="btn btn-stop" disabled>⏹ Arrêter</button>
+    <div id="excelInfo" class="excel-info hidden">
+      <span id="excelFileName">—</span>
     </div>
 
-    <div class="log" id="log"></div>
+    <textarea id="phones" rows="5"
+      placeholder="213600123456&#10;33612345678,Ahmed&#10;212661234567,Sara&#10;&#10;Format : numéro  ou  numéro,Prénom"></textarea>
+    <div class="counter" id="phoneCount">0 numéro</div>
+    <div class="hint-block">
+      Colonne A = numéro (avec indicatif pays), Colonne B = prénom (optionnel)
+    </div>
+  </section>
 
-    <div class="footer">Ne fermez pas ce panneau pendant l'envoi</div>
+  <!-- Section Message -->
+  <section class="section">
+    <div class="section-title">✏️ Message</div>
+    <textarea id="message" rows="3"
+      placeholder="Bonjour {name} ! 🎉&#10;Découvrez notre nouveau produit…"></textarea>
+    <div class="hint-block"><code>{name}</code> sera remplacé par le prénom du contact</div>
+  </section>
 
+  <!-- Section Photo Google Drive -->
+  <section class="section">
+    <div class="section-title">🖼️ Photo (optionnelle)</div>
+    <div class="drive-row">
+      <input type="url" id="driveUrl" placeholder="https://drive.google.com/file/d/…/view">
+      <button id="previewBtn" class="btn-small">Aperçu</button>
+    </div>
+    <div class="hint-block">
+      Partagez le fichier Drive en <strong>Accès: Tout le monde avec le lien</strong>
+    </div>
+    <div id="previewWrap" class="preview-wrap hidden">
+      <img id="previewImg" src="" alt="Aperçu" class="preview-img">
+      <button id="clearPhoto" class="btn-small btn-ghost">✕ Supprimer</button>
+    </div>
+  </section>
+
+  <!-- Paramètres -->
+  <section class="section section-inline">
+    <div class="param">
+      <label for="delay">Délai entre envois</label>
+      <div class="input-unit">
+        <input type="number" id="delay" value="8" min="5" max="120">
+        <span>s</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Status + Contrôles -->
+  <div id="status" class="status">Prêt à envoyer</div>
+
+  <div class="progress-wrap">
+    <div class="progress-bg"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+    <span class="progress-text" id="progressText">0 / 0</span>
   </div>
-  <script src="popup.js"></script>
+
+  <div class="buttons">
+    <button id="startBtn" class="btn btn-start">▶ Démarrer</button>
+    <button id="stopBtn" class="btn btn-stop" disabled>⏹ Arrêter</button>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="footer">⚠️ Gardez ce panneau ouvert pendant l'envoi</div>
+
+</div>
+<script src="popup.js"></script>
 </body>
 </html>
