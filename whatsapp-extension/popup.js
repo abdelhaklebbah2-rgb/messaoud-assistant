@@ -158,6 +158,12 @@ class WASenderUI {
     this.$('driveUrl').addEventListener('input', () => this._persist());
     this.$('excelFile').addEventListener('change', e => this._importExcel(e));
     this.$('clearContacts').addEventListener('click', () => this._clearContacts());
+    /* onglets photo */
+    this.$('tabLocal').addEventListener('click', () => this._switchPhotoTab('local'));
+    this.$('tabDrive').addEventListener('click', () => this._switchPhotoTab('drive'));
+    /* upload local */
+    this.$('localPhoto').addEventListener('change', e => this._loadLocalPhoto(e));
+    /* drive */
     this.$('previewBtn').addEventListener('click', () => this._loadDriveImage());
     this.$('clearPhoto').addEventListener('click', () => this._clearPhoto());
     this.$('startBtn').addEventListener('click', () => this._start());
@@ -382,9 +388,43 @@ class WASenderUI {
     this._persist();
   }
 
-  /* ── Photo Google Drive ── */
+  /* ── Onglets photo ── */
+  _switchPhotoTab(tab) {
+    const isLocal = tab === 'local';
+    this.$('tabLocal').classList.toggle('active', isLocal);
+    this.$('tabDrive').classList.toggle('active', !isLocal);
+    this.$('panelLocal').classList.toggle('hidden', !isLocal);
+    this.$('panelDrive').classList.toggle('hidden', isLocal);
+  }
+
+  /* ── Upload local ── */
+  async _loadLocalPhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { this._setStatus('error', '❌ Fichier non supporté'); return; }
+    this._setStatus('sending', '⏳ Chargement…');
+    try {
+      const b64 = await blobToBase64(file);
+      this.imageData = { b64, mime: file.type };
+      this.$('previewImg').src = URL.createObjectURL(file);
+      this.$('previewWrap').classList.remove('hidden');
+      this._setStatus('done', `✅ Photo chargée (${Math.round(file.size/1024)} Ko)`);
+    } catch (err) {
+      this._setStatus('error', `❌ ${err.message}`);
+    }
+    e.target.value = '';
+  }
+
+  /* ── Google Drive ── */
   _extractDriveId(url) {
-    for (const p of [/\/file\/d\/([a-zA-Z0-9_-]+)/, /[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/]) {
+    const patterns = [
+      /\/file\/d\/([a-zA-Z0-9_-]{10,})/,       /* .../file/d/ID/view */
+      /[?&]id=([a-zA-Z0-9_-]{10,})/,            /* ...?id=ID */
+      /\/d\/([a-zA-Z0-9_-]{10,})/,              /* /d/ID */
+      /googleusercontent\.com\/d\/([a-zA-Z0-9_-]{10,})/, /* lh3 direct */
+      /thumbnail\?id=([a-zA-Z0-9_-]{10,})/,     /* thumbnail URL */
+    ];
+    for (const p of patterns) {
       const m = url.match(p); if (m) return m[1];
     }
     return null;
@@ -394,14 +434,17 @@ class WASenderUI {
     const url = this.$('driveUrl').value.trim();
     if (!url) return;
     const fileId = this._extractDriveId(url);
-    if (!fileId) { this._setStatus('error', '❌ URL Google Drive invalide'); return; }
+    if (!fileId) {
+      this._setStatus('error', '❌ URL invalide — utilisez "📁 Depuis l\'appareil" à la place');
+      return;
+    }
     this._setStatus('sending', '⏳ Chargement photo depuis Drive…');
     try {
       const imgUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`;
       const resp   = await fetch(imgUrl);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (!resp.ok) throw new Error(`Erreur Drive (${resp.status}) — vérifiez le partage public`);
       const blob = await resp.blob();
-      if (!blob.type.startsWith('image/')) throw new Error('Pas une image');
+      if (!blob.type.startsWith('image/')) throw new Error('Pas une image — utilisez l\'onglet "Depuis l\'appareil"');
       const b64 = await blobToBase64(blob);
       this.imageData = { b64, mime: blob.type };
       this.$('previewImg').src = URL.createObjectURL(blob);
@@ -415,6 +458,7 @@ class WASenderUI {
   _clearPhoto() {
     this.imageData = null;
     this.$('driveUrl').value = '';
+    this.$('localPhoto').value = '';
     this.$('previewImg').src = '';
     this.$('previewWrap').classList.add('hidden');
     this._persist();

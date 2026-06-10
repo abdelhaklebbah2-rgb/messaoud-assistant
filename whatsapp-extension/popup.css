@@ -216,6 +216,21 @@ code {
 /* ─── Footer ─── */
 .footer { text-align: center; font-size: 10px; color: #3b4a54; border-top: 1px solid #1a252d; padding-top: 7px; }
 
+/* ─── Photo tabs ─── */
+.photo-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.tab-btn {
+  flex: 1; font-size: 11px; padding: 5px 8px; border-radius: 6px; border: 1px solid #2a3942;
+  background: #111b21; color: #8696a0; cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.tab-btn.active { background: #00a884; color: #fff; border-color: #00a884; }
+.tab-btn:not(.active):hover { background: #2a3942; color: #e9edef; }
+
+.btn-upload {
+  display: inline-block; cursor: pointer; background: #2a3942; color: #e9edef;
+  font-size: 11px; padding: 5px 12px; border-radius: 6px; margin-bottom: 4px;
+}
+.btn-upload:hover { background: #3b4a54; }
+
 /* ─── WA Status bar ─── */
 .wa-status {
   display: flex;

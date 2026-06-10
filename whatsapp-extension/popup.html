@@ -58,16 +58,33 @@
     <div class="hint-block"><code>{name}</code> sera remplacé par le prénom du contact</div>
   </section>
 
-  <!-- Section Photo Google Drive -->
+  <!-- Section Photo -->
   <section class="section">
     <div class="section-title">🖼️ Photo (optionnelle)</div>
-    <div class="drive-row">
-      <input type="url" id="driveUrl" placeholder="https://drive.google.com/file/d/…/view">
-      <button id="previewBtn" class="btn-small">Aperçu</button>
+
+    <!-- Onglets source -->
+    <div class="photo-tabs">
+      <button id="tabLocal" class="tab-btn active">📁 Depuis l'appareil</button>
+      <button id="tabDrive" class="tab-btn">☁️ Google Drive</button>
     </div>
-    <div class="hint-block">
-      Partagez le fichier Drive en <strong>Accès: Tout le monde avec le lien</strong>
+
+    <!-- Upload local -->
+    <div id="panelLocal">
+      <label class="btn-small btn-upload" for="localPhoto">Choisir une photo…</label>
+      <input type="file" id="localPhoto" accept="image/*" hidden>
     </div>
+
+    <!-- Google Drive -->
+    <div id="panelDrive" class="hidden">
+      <div class="drive-row">
+        <input type="url" id="driveUrl" placeholder="https://drive.google.com/file/d/…/view">
+        <button id="previewBtn" class="btn-small">Charger</button>
+      </div>
+      <div class="hint-block">
+        Partagez en <strong>Accès: Tout le monde avec le lien</strong>
+      </div>
+    </div>
+
     <div id="previewWrap" class="preview-wrap hidden">
       <img id="previewImg" src="" alt="Aperçu" class="preview-img">
       <button id="clearPhoto" class="btn-small btn-ghost">✕ Supprimer</button>
