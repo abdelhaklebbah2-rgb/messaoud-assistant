@@ -11,14 +11,41 @@ dossier "whatsapp-extension".
 
 
 ────────────────────────────────────────────
-ÉTAPE 2 — Installer dans Chrome
+ÉTAPE 2 — Installer dans Chrome / Chromium
 ────────────────────────────────────────────
-1. Ouvrez Chrome
+Fonctionne sur Windows, Mac ET Linux (même fichier).
+
+1. Ouvrez Chrome ou Chromium
 2. Tapez dans la barre d'adresse :  chrome://extensions/
 3. Activez "Mode développeur" (bouton en haut à droite)
 4. Cliquez "Charger l'extension non empaquetée"
 5. Sélectionnez le dossier "whatsapp-extension"
-6. L'icône 💬 apparaît dans la barre Chrome
+6. L'icône 💬 apparaît dans la barre du navigateur
+
+
+────────────────────────────────────────────
+🐧 LINUX — installer un navigateur compatible
+────────────────────────────────────────────
+Si vous n'avez pas Chrome/Chromium, dans un terminal :
+
+• Ubuntu / Debian / Mint :
+    sudo apt update && sudo apt install chromium-browser
+  (ou « chromium » selon la distribution)
+
+• Fedora :
+    sudo dnf install chromium
+
+• Arch / Manjaro :
+    sudo pacman -S chromium
+
+• Snap (toutes distributions) :
+    sudo snap install chromium
+
+• Flatpak (toutes distributions) :
+    flatpak install flathub org.chromium.Chromium
+
+Lancez ensuite « chromium » et suivez l'ÉTAPE 2.
+Tout fonctionne exactement pareil que sur Windows.
 
 
 ────────────────────────────────────────────
