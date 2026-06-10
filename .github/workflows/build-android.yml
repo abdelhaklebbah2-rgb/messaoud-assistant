@@ -1,0 +1,84 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - 'wa-sender-android/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install Gradle 8.4
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt/gradle
+          echo "/opt/gradle/gradle-8.4/bin" >> $GITHUB_PATH
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: >-
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+
+      - name: Generate Gradle wrapper
+        working-directory: wa-sender-android
+        run: gradle wrapper --gradle-version 8.4
+
+      - name: Make gradlew executable
+        working-directory: wa-sender-android
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        working-directory: wa-sender-android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wa-sender-debug-apk
+          path: wa-sender-android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v${{ github.run_number }}
+          name: "WA Sender APK — build ${{ github.run_number }}"
+          body: |
+            ## 📱 WA Sender — Application Android
+
+            Application autonome pour l'envoi en masse de messages WhatsApp.
+
+            ### Installation sur Android
+            1. Téléchargez **app-debug.apk** ci-dessous
+            2. Sur Android : **Paramètres → Sécurité → Sources inconnues** ✓
+            3. Ouvrez le fichier APK depuis votre téléphone
+            4. Appuyez sur **Installer**
+            5. Lancez **WA Sender** → scannez le QR WhatsApp
+            6. Entrez vos numéros, votre message, lancez !
+
+            ### Fonctionnement
+            - WhatsApp Web s'affiche en haut de l'écran
+            - Les contrôles (numéros, message, délai) sont en bas
+            - Délai minimum : 8 secondes entre chaque message
+            - `{name}` est remplacé par le prénom du contact
+          files: wa-sender-android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
