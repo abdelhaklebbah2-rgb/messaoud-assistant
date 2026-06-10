@@ -147,6 +147,7 @@ class WASenderUI {
     this._restore();
     this._startClock();
     this._pollStorage();
+    this._initWACheck();
   }
 
   /* ── Câblage événements ── */
@@ -161,6 +162,16 @@ class WASenderUI {
     this.$('clearPhoto').addEventListener('click', () => this._clearPhoto());
     this.$('startBtn').addEventListener('click', () => this._start());
     this.$('stopBtn').addEventListener('click',  () => this._stop());
+    this.$('openWaBtn').addEventListener('click', () => {
+      chrome.tabs.create({ url: 'https://web.whatsapp.com', active: true });
+      setTimeout(() => this._checkWAConnected(), 3000);
+    });
+  }
+
+  /* ── Vérification WA au démarrage du popup ── */
+  async _initWACheck() {
+    await this._checkWAConnected();
+    setInterval(() => this._checkWAConnected(), 5000);
   }
 
   /* ── Démarrer ── */
@@ -174,6 +185,13 @@ class WASenderUI {
     if (!message)         { this._setStatus('error', '⚠️ Message vide'); return; }
 
     this._setStatus('sending', '🚀 Démarrage…');
+    /* Vérifier que WA est connecté avant de démarrer */
+    const waOk = await this._checkWAConnected();
+    if (!waOk) {
+      this._setStatus('error', '⚠️ Connectez WhatsApp Web d\'abord (scannez le QR)');
+      return;
+    }
+
     this.$('startBtn').disabled = true;
     this.$('stopBtn').disabled  = false;
 
@@ -184,6 +202,47 @@ class WASenderUI {
       image:    this.imageData,
       delay:    parseInt(this.$('delay').value) || 8,
     });
+  }
+
+  /* ── Vérifie si WA Web est connecté (onglet existant) ── */
+  async _checkWAConnected() {
+    const tabs = await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' });
+    if (!tabs.length) {
+      this._setWAStatus('disconnected', '⚠️ WhatsApp Web non ouvert');
+      return false;
+    }
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        func: () => {
+          if (document.querySelector('canvas[aria-label="Scan me!"]') ||
+              document.querySelector('[data-testid="qrcode"]')) return 'qr';
+          if (document.querySelector('[data-testid="default-user"]') ||
+              document.querySelector('[data-testid="chat-list"]') ||
+              document.querySelector('#pane-side') ||
+              document.querySelector('[aria-label="Chat list"]')) return 'ok';
+          return 'loading';
+        }
+      });
+      const state = results?.[0]?.result;
+      if (state === 'ok') {
+        this._setWAStatus('connected', '✅ WhatsApp connecté');
+        return true;
+      } else if (state === 'qr') {
+        this._setWAStatus('disconnected', '⚠️ Scannez le QR code dans WhatsApp Web');
+        chrome.tabs.update(tabs[0].id, { active: true });
+        return false;
+      }
+    } catch(e) { /* tab not accessible */ }
+    this._setWAStatus('disconnected', '⚠️ WhatsApp Web non connecté');
+    return false;
+  }
+
+  _setWAStatus(state, text) {
+    const bar = this.$('waStatus');
+    bar.className = `wa-status ${state}`;
+    this.$('waStatusIcon').textContent = state === 'connected' ? '✅' : state === 'disconnected' ? '⚠️' : '⏳';
+    this.$('waStatusText').textContent = text;
   }
 
   /* ── Arrêter ── */

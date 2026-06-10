@@ -216,6 +216,23 @@ code {
 /* ─── Footer ─── */
 .footer { text-align: center; font-size: 10px; color: #3b4a54; border-top: 1px solid #1a252d; padding-top: 7px; }
 
+/* ─── WA Status bar ─── */
+.wa-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+.wa-status.checking     { background: #1a252d; color: #8696a0; }
+.wa-status.connected    { background: #0d2e1e; color: #00a884; }
+.wa-status.disconnected { background: #2e1a0d; color: #f0b429; }
+.btn-wa { margin-left: auto; background: #00a884; color: #fff; font-size: 10px; padding: 3px 8px; }
+.btn-wa:hover { background: #00c49a; }
+.wa-status.connected .btn-wa { display: none; }
+
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: #111b21; }
