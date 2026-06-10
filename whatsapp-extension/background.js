@@ -1,37 +1,48 @@
 'use strict';
 
-/* ── helpers ── */
+/* ══════════════════════════════════════
+   WA Bulk Sender — moteur d'envoi (service worker)
+   L'envoi continue même popup fermé.
+   Le délai exact est respecté (pas de clamp 30s
+   des alarmes) grâce à des pings qui maintiennent
+   le service worker actif.
+══════════════════════════════════════ */
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const store = {
   get: keys => chrome.storage.local.get(keys),
   set: obj  => chrome.storage.local.set(obj),
 };
 
-let _sending   = false;
-let _activeTab = null;
+let _loopActive = false;   /* la boucle tourne-t-elle déjà ? (en mémoire) */
+let _activeTab  = null;     /* onglet WA en cours d'utilisation */
 
 /* ══════════════════════════════════════
-   Alarmes — cadence & keep-alive
+   Reprise automatique si le SW redémarre
 ══════════════════════════════════════ */
-chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === 'wa_next') doNextSend();
-  /* wa_keepalive : juste pour maintenir le SW actif */
-});
+chrome.runtime.onStartup.addListener(resumeIfNeeded);
+chrome.runtime.onInstalled.addListener(resumeIfNeeded);
+chrome.alarms.onAlarm.addListener(a => { if (a.name === 'wa_resume') resumeIfNeeded(); });
+
+async function resumeIfNeeded() {
+  const { wa_running } = await store.get('wa_running');
+  if (wa_running && !_loopActive) runLoop();
+}
 
 /* ══════════════════════════════════════
    Messages depuis le popup
 ══════════════════════════════════════ */
 chrome.runtime.onMessage.addListener((msg, _s, reply) => {
   (async () => {
-    if (msg.action === 'start') { await startCampaign(msg); reply({ ok: true }); }
-    else if (msg.action === 'stop') { await stopCampaign('⏹ Arrêté par l\'utilisateur'); reply({ ok: true }); }
+    if      (msg.action === 'start') { await startCampaign(msg); reply({ ok: true }); }
+    else if (msg.action === 'stop')  { await stopCampaign('⏹ Arrêté par l\'utilisateur'); reply({ ok: true }); }
     else reply({ ok: true });
   })();
-  return true;
+  return true; /* réponse asynchrone */
 });
 
 /* ══════════════════════════════════════
-   Démarrage / arrêt
+   Démarrage / arrêt de campagne
 ══════════════════════════════════════ */
 async function startCampaign(msg) {
   await store.set({
@@ -45,76 +56,101 @@ async function startCampaign(msg) {
     wa_results: [],
     wa_log:     [],
   });
-  chrome.alarms.create('wa_keepalive', { periodInMinutes: 1/3 }); /* toutes les 20s */
-  await doNextSend();
+  /* Filet de sécurité : réveille le SW chaque minute pour reprendre si crash */
+  chrome.alarms.create('wa_resume', { periodInMinutes: 1 });
+  runLoop();
 }
 
 async function stopCampaign(reason) {
   await store.set({ wa_running: false });
-  chrome.alarms.clear('wa_keepalive');
-  chrome.alarms.clear('wa_next');
+  chrome.alarms.clear('wa_resume');
   if (_activeTab) { chrome.tabs.remove(_activeTab).catch(() => {}); _activeTab = null; }
   await pushLog(reason, 'fail');
 }
 
 /* ══════════════════════════════════════
-   Étape suivante de la boucle
+   Boucle principale d'envoi
 ══════════════════════════════════════ */
-async function doNextSend() {
-  if (_sending) return;
-  _sending = true;
+async function runLoop() {
+  if (_loopActive) return;
+  _loopActive = true;
   try {
-    const s = await store.get(['wa_running','wa_queue','wa_index','wa_message','wa_image','wa_delay','wa_results']);
+    for (;;) {
+      const s = await store.get([
+        'wa_running','wa_queue','wa_index','wa_message','wa_image','wa_delay','wa_results'
+      ]);
+      if (!s.wa_running) break;
 
-    if (!s.wa_running) { _sending = false; return; }
+      /* Restriction horaire 9h–17h */
+      const h = new Date().getHours();
+      if (h < 9 || h >= 17) {
+        await stopCampaign('🚫 Hors des heures 9h-17h — relancez demain à 9h');
+        break;
+      }
 
-    const h = new Date().getHours();
-    if (h < 9 || h >= 17) {
-      await stopCampaign('🚫 Hors des heures 9h-17h — relancez demain à 9h');
-      _sending = false; return;
+      const q = s.wa_queue || [];
+      const idx = s.wa_index || 0;
+
+      /* Fin de la file */
+      if (idx >= q.length) {
+        const ok = (s.wa_results || []).filter(r => r.ok).length;
+        await store.set({ wa_running: false, wa_done: true });
+        chrome.alarms.clear('wa_resume');
+        await pushLog(`🏁 Terminé : ${ok} / ${q.length} envoyés`, 'info');
+        break;
+      }
+
+      const contact = q[idx];
+      const text    = s.wa_message.replace(/\{name\}/g, contact.name || '');
+
+      await pushLog(`📤 [${idx+1}/${q.length}] → +${contact.phone}${contact.name ? ' ('+contact.name+')' : ''}…`);
+      /* Incrémenter AVANT l'envoi : si crash, on ne re-spamme pas le même numéro */
+      await store.set({ wa_index: idx + 1 });
+
+      let ok = false;
+      try {
+        if (s.wa_image) await sendWithImage(contact.phone, text, s.wa_image);
+        else            await sendText(contact.phone, text);
+        ok = true;
+        await pushLog(`✅ Envoyé à +${contact.phone}`, 'ok');
+      } catch (e) {
+        await pushLog(`❌ +${contact.phone} — ${e.message}`, 'fail');
+      }
+      await store.set({ wa_results: [...(s.wa_results || []), { ok }] });
+
+      /* Dernier message ? on boucle directement vers la finalisation */
+      if (idx + 1 >= q.length) continue;
+
+      /* Délai exact (base + 0–5s aléatoire anti-détection) */
+      const totalMs = (parseInt(s.wa_delay) || 8) * 1000 + Math.random() * 5000;
+      await pushLog(`⏳ Prochain dans ${Math.round(totalMs/1000)}s…`, 'info');
+      const stopped = await waitAlive(totalMs);
+      if (stopped) break;
     }
-
-    const { wa_queue: q, wa_index: idx } = s;
-
-    if (idx >= (q || []).length) {
-      const ok = (s.wa_results || []).filter(r => r.ok).length;
-      await store.set({ wa_running: false, wa_done: true });
-      chrome.alarms.clear('wa_keepalive');
-      await pushLog(`🏁 Terminé : ${ok} / ${(q||[]).length} envoyés`, 'info');
-      _sending = false; return;
-    }
-
-    const contact = q[idx];
-    const text    = s.wa_message.replace(/\{name\}/g, contact.name || '');
-
-    await pushLog(`📤 [${idx+1}/${q.length}] → +${contact.phone}${contact.name ? ' ('+contact.name+')' : ''}…`);
-    await store.set({ wa_index: idx + 1 });
-
-    let ok = false;
-    try {
-      if (s.wa_image) await sendWithImage(contact.phone, text, s.wa_image);
-      else            await sendText(contact.phone, text);
-      ok = true;
-      await pushLog(`✅ Envoyé à +${contact.phone}`, 'ok');
-    } catch (e) {
-      await pushLog(`❌ +${contact.phone} — ${e.message}`, 'fail');
-    }
-
-    const results = [...(s.wa_results || []), { ok }];
-    await store.set({ wa_results: results });
-
-    const totalMs = (parseInt(s.wa_delay) || 8) * 1000 + Math.random() * 5000;
-    await pushLog(`⏳ Prochain dans ${Math.round(totalMs/1000)}s…`, 'info');
-    chrome.alarms.create('wa_next', { delayInMinutes: totalMs / 60000 });
-
   } catch (e) {
     await pushLog(`⚠️ Erreur interne : ${e.message}`, 'fail');
+  } finally {
+    _loopActive = false;
   }
-  _sending = false;
 }
 
 /* ══════════════════════════════════════
-   Log persistant
+   Attente qui maintient le SW actif
+   (ping storage toutes les 2s → pas de kill)
+   Retourne true si la campagne a été arrêtée.
+══════════════════════════════════════ */
+async function waitAlive(ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const { wa_running } = await store.get('wa_running'); /* ping + détection stop */
+    if (!wa_running) return true;
+    await sleep(Math.min(2000, end - Date.now()));
+  }
+  return false;
+}
+
+/* ══════════════════════════════════════
+   Log persistant (lu par le popup)
 ══════════════════════════════════════ */
 async function pushLog(text, cls = '') {
   const { wa_log = [] } = await store.get('wa_log');
@@ -125,7 +161,7 @@ async function pushLog(text, cls = '') {
 }
 
 /* ══════════════════════════════════════
-   Ouverture d'onglet + handler
+   Ouvre un onglet WA, exécute le handler, ferme
 ══════════════════════════════════════ */
 function openTab(url, handler) {
   return new Promise((resolve, reject) => {
@@ -152,10 +188,10 @@ function openTab(url, handler) {
         if (id !== tabId || info.status !== 'complete' || processed) return;
         processed = true;
         chrome.tabs.onUpdated.removeListener(onUpdate);
-        await sleep(4500);
+        await sleep(4500); /* laisse React monter */
         const { wa_running } = await store.get('wa_running');
         if (!wa_running) { done(false, new Error('Arrêté')); return; }
-        try { await handler(tabId); done(true); } catch(e) { done(false, e); }
+        try { await handler(tabId); done(true); } catch (e) { done(false, e); }
       };
       chrome.tabs.onUpdated.addListener(onUpdate);
     });
@@ -168,7 +204,7 @@ const runScript = (tabId, func, args = []) =>
 const runMain = (tabId, func, args = []) =>
   chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func, args }).then(r => r?.[0]?.result);
 
-/* ── Envoi texte ── */
+/* ── Envoi texte seul ── */
 async function sendText(phone, message) {
   return openTab(
     `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`,
@@ -230,7 +266,7 @@ function _injectClickAttach() {
   if (document.querySelector('canvas[aria-label="Scan me!"]')) return 'not_logged_in';
   if (document.querySelector('._amjy') ||
       document.querySelector('[data-testid="popup-contents"]')) return 'not_found';
-  for (const icon of ['attach-menu-plus','clip','attach']) {
+  for (const icon of ['attach-menu-plus','clip','attach','plus-rounded']) {
     const el = document.querySelector(`[data-icon="${icon}"]`);
     const btn = el && (el.closest('button') || el.parentElement);
     if (btn) { btn.click(); return 'clicked'; }
@@ -261,6 +297,7 @@ function _injectSetCaption(text) {
     '[data-testid="media-caption-input-container"] [contenteditable]',
     '[data-lexical-editor="true"]',
     'div[contenteditable][data-tab="6"]',
+    'div[contenteditable][role="textbox"]',
   ]) {
     const el = document.querySelector(sel);
     if (el) { el.focus(); document.execCommand('insertText', false, text); return 'set'; }
@@ -270,7 +307,8 @@ function _injectSetCaption(text) {
 
 function _injectSendMedia() {
   for (const sel of ['[data-testid="send"]','button[aria-label="Send"]',
-                      'button[aria-label="Envoyer"]','div[role="button"][aria-label="Send"]']) {
+                      'button[aria-label="Envoyer"]','div[role="button"][aria-label="Send"]',
+                      'span[data-icon="send"]']) {
     const el = document.querySelector(sel);
     const btn = el && (el.tagName === 'BUTTON' ? el : (el.closest('button') || el));
     if (btn) { btn.click(); return 'sent'; }

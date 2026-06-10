@@ -1,0 +1,64 @@
+╔════════════════════════════════════════════════════╗
+║   💬 WA BULK SENDER — Guide d'installation          ║
+╚════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────
+ÉTAPE 1 — Décompresser
+────────────────────────────────────────────
+Décompressez le fichier ZIP dans un dossier
+(par exemple sur le Bureau). Vous obtenez un
+dossier "whatsapp-extension".
+
+
+────────────────────────────────────────────
+ÉTAPE 2 — Installer dans Chrome
+────────────────────────────────────────────
+1. Ouvrez Chrome
+2. Tapez dans la barre d'adresse :  chrome://extensions/
+3. Activez "Mode développeur" (bouton en haut à droite)
+4. Cliquez "Charger l'extension non empaquetée"
+5. Sélectionnez le dossier "whatsapp-extension"
+6. L'icône 💬 apparaît dans la barre Chrome
+
+
+────────────────────────────────────────────
+ÉTAPE 3 — Connecter WhatsApp Web
+────────────────────────────────────────────
+1. Cliquez l'icône de l'extension
+2. Cliquez "Ouvrir WhatsApp Web"
+3. Scannez le QR code avec votre téléphone :
+   WhatsApp > Menu (⋮) > Appareils associés >
+   Associer un appareil
+4. L'extension affiche "✅ WhatsApp connecté"
+
+
+────────────────────────────────────────────
+ÉTAPE 4 — Envoyer
+────────────────────────────────────────────
+1. Importez votre liste (bouton "Import Excel / CSV")
+   ou collez les numéros (un par ligne)
+   Format : 213XXXXXXXXX  ou  213XXXXXXXXX,Nom
+2. Écrivez votre message
+   ({name} = remplacé par le nom du contact)
+3. (Optionnel) Ajoutez une photo
+4. Réglez le délai (8s recommandé minimum)
+5. Cliquez "▶ Démarrer"
+
+➡ L'envoi continue MÊME si vous fermez le panneau.
+➡ Vous pouvez fermer le popup, l'envoi continue.
+
+
+────────────────────────────────────────────
+⚠️ CONSEILS ANTI-BLOCAGE
+────────────────────────────────────────────
+• Maximum 50–80 messages par jour
+• Délai minimum 8–12 secondes entre chaque
+• Uniquement entre 9h et 17h (déjà imposé)
+• N'envoyez qu'à des contacts qui acceptent
+• Variez vos messages si possible
+
+
+────────────────────────────────────────────
+Plage horaire : 9h–17h (automatique)
+Hors de cette plage, l'envoi est bloqué.
+────────────────────────────────────────────
