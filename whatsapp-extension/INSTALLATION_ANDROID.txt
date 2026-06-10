@@ -1,0 +1,73 @@
+╔════════════════════════════════════════════════════╗
+║   💬 WA BULK SENDER — Installation Android          ║
+║   via Kiwi Browser (extensions Chrome supportées)   ║
+╚════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────
+ÉTAPE 1 — Installer Kiwi Browser
+────────────────────────────────────────────
+Kiwi Browser = Chrome pour Android + support
+des extensions Chrome (Manifest V3).
+
+Lien Play Store :
+  https://play.google.com/store/apps/details?id=com.kiwibrowser.browser
+
+Ou cherchez "Kiwi Browser" sur le Play Store.
+
+
+────────────────────────────────────────────
+ÉTAPE 2 — Activer le mode développeur
+────────────────────────────────────────────
+Dans Kiwi Browser :
+1. Menu (⋮) → Extensions
+2. Activez "Mode développeur" (en haut)
+3. Un bouton "+ (from .zip/.crx/.user.js)"
+   apparaît en bas
+
+
+────────────────────────────────────────────
+ÉTAPE 3 — Installer l'extension
+────────────────────────────────────────────
+1. Transférez le fichier wa-bulk-sender.zip
+   sur votre téléphone (USB, email, Drive…)
+2. Dans Kiwi Browser → Extensions
+3. Tapez "+ (from .zip/.crx/.user.js)"
+4. Sélectionnez wa-bulk-sender.zip
+5. L'icône 💬 apparaît dans la barre Kiwi
+
+
+────────────────────────────────────────────
+ÉTAPE 4 — Connecter WhatsApp Web
+────────────────────────────────────────────
+1. Cliquez l'icône 💬 dans Kiwi Browser
+2. "Ouvrir WhatsApp Web" → nouvel onglet
+3. Scannez le QR code depuis l'appli WhatsApp
+   (WhatsApp > ⋮ > Appareils associés)
+4. L'extension détecte la connexion ✅
+
+
+────────────────────────────────────────────
+ÉTAPE 5 — Envoyer
+────────────────────────────────────────────
+Identique à la version bureau :
+1. Importez votre CSV ou collez les numéros
+2. Tapez votre message
+3. Choisissez une photo (optionnel)
+4. Délai : 10s minimum sur Android
+5. ▶ Démarrer → envoi automatique
+
+⚠️ Laissez Kiwi Browser au premier plan
+   pendant l'envoi (ne le minimisez pas trop
+   longtemps — Android peut le suspendre).
+
+
+────────────────────────────────────────────
+CONSEILS ANDROID
+────────────────────────────────────────────
+• Branchez le chargeur pendant l'envoi
+• Désactivez l'économiseur de batterie
+  pour Kiwi Browser dans les paramètres
+• Réglez le délai à 12–15s (connexion mobile
+  plus lente que bureau)
+• Max 50 messages par session
+────────────────────────────────────────────
