@@ -40,7 +40,11 @@ class XLSXParser {
   static async _parseXLSX(buffer) {
     const files = await XLSXParser._readZIP(buffer);
     const ss    = XLSXParser._parseSharedStrings(files['xl/sharedStrings.xml'] || '');
-    const rows  = XLSXParser._parseSheet(files['xl/worksheets/sheet1.xml'] || '', ss);
+    /* Cherche la première feuille disponible (sheet1, sheet2, Feuil1…) */
+    const sheetKey = Object.keys(files).find(k => /xl\/worksheets\/sheet\d+\.xml/.test(k))
+                  || 'xl/worksheets/sheet1.xml';
+    const rows  = XLSXParser._parseSheet(files[sheetKey] || '', ss);
+    if (!rows.length) throw new Error(`Feuille Excel vide ou non reconnue (clé: ${sheetKey})`);
     return XLSXParser._rowsToContacts(rows);
   }
 
@@ -210,38 +214,45 @@ class WASenderUI {
     });
   }
 
-  /* ── Vérifie si WA Web est connecté (onglet existant) ── */
+  /* ── Vérifie si WA Web est ouvert et connecté ── */
   async _checkWAConnected() {
     const tabs = await chrome.tabs.query({ url: 'https://web.whatsapp.com/*' });
     if (!tabs.length) {
-      this._setWAStatus('disconnected', '⚠️ WhatsApp Web non ouvert');
+      this._setWAStatus('disconnected', '⚠️ Cliquez "Ouvrir WhatsApp Web"');
       return false;
     }
     try {
-      const results = await chrome.scripting.executeScript({
+      const [{result}] = await chrome.scripting.executeScript({
         target: { tabId: tabs[0].id },
         func: () => {
-          if (document.querySelector('canvas[aria-label="Scan me!"]') ||
-              document.querySelector('[data-testid="qrcode"]')) return 'qr';
-          if (document.querySelector('[data-testid="default-user"]') ||
-              document.querySelector('[data-testid="chat-list"]') ||
-              document.querySelector('#pane-side') ||
-              document.querySelector('[aria-label="Chat list"]')) return 'ok';
+          /* QR visible → pas connecté */
+          if (document.querySelector('[data-ref]') ||
+              document.querySelector('canvas') ||
+              document.querySelector('[data-testid="qrcode"]'))
+            return 'qr';
+          /* Page pas encore chargée */
+          if (document.readyState !== 'complete') return 'loading';
+          /* DOM WA chargé = beaucoup de contenu */
+          if (document.body && document.body.children.length > 1) return 'ok';
           return 'loading';
         }
       });
-      const state = results?.[0]?.result;
-      if (state === 'ok') {
-        this._setWAStatus('connected', '✅ WhatsApp connecté');
-        return true;
-      } else if (state === 'qr') {
-        this._setWAStatus('disconnected', '⚠️ Scannez le QR code dans WhatsApp Web');
-        chrome.tabs.update(tabs[0].id, { active: true });
+      if (result === 'qr') {
+        this._setWAStatus('disconnected', '⚠️ Scannez le QR code WhatsApp');
         return false;
       }
-    } catch(e) { /* tab not accessible */ }
-    this._setWAStatus('disconnected', '⚠️ WhatsApp Web non connecté');
-    return false;
+      if (result === 'ok') {
+        this._setWAStatus('connected', '✅ WhatsApp Web connecté');
+        return true;
+      }
+      /* loading : on autorise quand même */
+      this._setWAStatus('connected', '⏳ WhatsApp Web en cours de chargement…');
+      return true;
+    } catch (e) {
+      /* Si l'injection échoue, l'onglet existe = on fait confiance */
+      this._setWAStatus('connected', '✅ WhatsApp Web ouvert');
+      return true;
+    }
   }
 
   _setWAStatus(state, text) {
@@ -435,24 +446,31 @@ class WASenderUI {
     if (!url) return;
     const fileId = this._extractDriveId(url);
     if (!fileId) {
-      this._setStatus('error', '❌ URL invalide — utilisez "📁 Depuis l\'appareil" à la place');
+      this._setStatus('error', '❌ URL invalide — utilisez plutôt "📁 Depuis l\'appareil"');
       return;
     }
     this._setStatus('sending', '⏳ Chargement photo depuis Drive…');
-    try {
-      const imgUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`;
-      const resp   = await fetch(imgUrl);
-      if (!resp.ok) throw new Error(`Erreur Drive (${resp.status}) — vérifiez le partage public`);
-      const blob = await resp.blob();
-      if (!blob.type.startsWith('image/')) throw new Error('Pas une image — utilisez l\'onglet "Depuis l\'appareil"');
-      const b64 = await blobToBase64(blob);
-      this.imageData = { b64, mime: blob.type };
-      this.$('previewImg').src = URL.createObjectURL(blob);
-      this.$('previewWrap').classList.remove('hidden');
-      this._setStatus('done', `✅ Photo chargée (${Math.round(blob.size/1024)} Ko)`);
-    } catch (err) {
-      this._setStatus('error', `❌ ${err.message}`);
+    /* Essayer plusieurs URL Drive */
+    const candidates = [
+      `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`,
+      `https://drive.google.com/uc?export=view&id=${fileId}`,
+      `https://lh3.googleusercontent.com/d/${fileId}`,
+    ];
+    for (const imgUrl of candidates) {
+      try {
+        const resp = await fetch(imgUrl, { mode: 'cors' });
+        if (!resp.ok) continue;
+        const blob = await resp.blob();
+        if (!blob.type.startsWith('image/')) continue;
+        const b64 = await blobToBase64(blob);
+        this.imageData = { b64, mime: blob.type };
+        this.$('previewImg').src = URL.createObjectURL(blob);
+        this.$('previewWrap').classList.remove('hidden');
+        this._setStatus('done', `✅ Photo chargée (${Math.round(blob.size/1024)} Ko)`);
+        return;
+      } catch (_) { continue; }
     }
+    this._setStatus('error', '❌ Impossible de charger depuis Drive — utilisez "📁 Depuis l\'appareil"');
   }
 
   _clearPhoto() {

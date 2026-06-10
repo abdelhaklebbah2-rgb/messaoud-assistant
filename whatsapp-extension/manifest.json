@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WA Bulk Sender",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Envoyez des messages WhatsApp avec photos à votre liste de clients",
   "permissions": ["tabs", "scripting", "storage", "alarms"],
   "host_permissions": [
